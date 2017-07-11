@@ -77,6 +77,79 @@ class boatHandler(webapp2.RequestHandler):
 
 
 
+class slip(ndb.Model):
+	number = ndb.IntegerProperty(required=True)
+	current_boat = ndb.StringProperty()
+	arrival_date = ndb.IntegerProperty()
+
+
+class slipHandler(webapp2.RequestHandler):
+
+	def post(self):
+		slip_data = json.loads(self.request.body)
+		new_slip = slip(number=slip_data['number'])
+
+		new_slip.put()
+
+		slip_dict = new_slip.to_dict()
+		slip_dict['kind'] = new_slip.key.kind()
+		slip_dict['self'] = '/slips/' + new_slip.key.urlsafe()
+
+		self.response.write(json.dumps(slip_dict))
+
+
+	def get(self, id=None):
+		if id:
+			slip_data = ndb.Key(urlsafe=id).get()
+			slip_dict = slip_data.to_dict()
+			slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
+			slip_dict['self'] = "/slips/" + id
+
+			self.response.write(json.dumps(slip_dict))
+
+
+	def patch(self, id=None):
+		if id:
+			modify_data = json.loads(self.request.body)
+			slip_entity = ndb.Key(urlsafe=id).get()
+
+			if 'number' in modify_data:
+				slip_entity.name = modify_data['number']
+			if 'current_boat' in modify_data:
+				slip_entity.type = modify_data['current_boat']
+			if 'arrival_date' in modify_data:
+				slip_entity.length = modify_data['arrival_date']
+
+			slip_entity.put()
+
+			slip_dict = slip_entity.to_dict()
+			slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
+			slip_dict['self'] = "/slips/" + id
+
+			self.response.write(json.dumps(slip_dict))
+
+
+	def put(self, id=None):
+		if id:
+			replace_data = json.loads(self.request.body)
+			slip_entity = ndb.Key(urlsafe=id).get()
+
+			slip_entity.number = replace_data['number']
+			slip_entity.current_boat = replace_data['current_boat']
+			slip_entity.arrival_date = replace_data['arrival_date']
+
+			slip_entity.put()
+
+			slip_dict = slip_entity.to_dict()
+			slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
+			slip_dict['self'] = "/slips/" + id
+
+			self.response.write(json.dumps(slip_dict))
+
+
+	def delete(self, id=None):
+		if id:
+			ndb.Key(urlsafe=id).delete()
 
 
 class MainPage(webapp2.RequestHandler):
@@ -94,4 +167,6 @@ app = webapp2.WSGIApplication([
     ('/', MainPage),
     ('/boats', boatHandler),
     ('/boats/(.*)', boatHandler),
+	('/slips', slipHandler),
+    ('/slips/(.*)', slipHandler),
 ], debug=True)
