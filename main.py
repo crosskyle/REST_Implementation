@@ -44,6 +44,19 @@ class boatHandler(webapp2.RequestHandler):
 			if 'length' in modify_data:
 				boat_entity.length = modify_data['length']
 
+			if 'at_sea' in modify_data:
+				if modify_data['at_sea']:
+					#remove a boat from a slip
+					slip_with_boat_list = slip.query(slip.current_boat == id).fetch()
+					slip_with_boat = slip_with_boat_list[0]
+					slip_with_boat.current_boat = None
+					slip_with_boat.arrival_date = None
+					slip_with_boat.put()
+
+					boat_entity.at_sea = False
+				else:
+					boat_entity.at_sea = True
+
 			boat_entity.put()
 
 			boat_dict = boat_entity.to_dict()
@@ -113,20 +126,34 @@ class slipHandler(webapp2.RequestHandler):
 			modify_data = json.loads(self.request.body)
 			slip_entity = ndb.Key(urlsafe=id).get()
 
-			if 'number' in modify_data:
-				slip_entity.name = modify_data['number']
-			if 'current_boat' in modify_data:
-				slip_entity.type = modify_data['current_boat']
-			if 'arrival_date' in modify_data:
-				slip_entity.length = modify_data['arrival_date']
+			if slip_entity.current_boat is None:
+				if 'number' in modify_data:
+					slip_entity.number = modify_data['number']
 
-			slip_entity.put()
+				if 'current_boat' in modify_data:
+					# check a boat into a slip
 
-			slip_dict = slip_entity.to_dict()
-			slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
-			slip_dict['self'] = "/slips/" + id
+					boat_entity = ndb.Key(urlsafe=modify_data['current_boat']).get()
+					boat_entity.at_sea = False
+					boat_entity.put()
 
-			self.response.write(json.dumps(slip_dict))
+					slip_entity.current_boat = modify_data['current_boat']
+
+				if 'arrival_date' in modify_data:
+					slip_entity.arrival_date = modify_data['arrival_date']
+
+				slip_entity.put()
+
+				slip_dict = slip_entity.to_dict()
+				slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
+				slip_dict['self'] = "/slips/" + id
+
+				self.response.write(json.dumps(slip_dict))
+
+			else:
+				self.response.write('Error 403 Forbidden')
+				self.response.set_status(403)
+
 
 
 	def put(self, id=None):
