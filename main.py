@@ -3,11 +3,14 @@ from google.appengine.ext import ndb
 import webapp2
 import json
 
+
 class boat(ndb.Model):
+	id = ndb.StringProperty()
 	name = ndb.StringProperty(required=True)
 	type = ndb.StringProperty(required=True)
 	length = ndb.IntegerProperty(required=True)
 	at_sea = ndb.BooleanProperty()
+
 
 
 class boatHandler(webapp2.RequestHandler):
@@ -16,6 +19,9 @@ class boatHandler(webapp2.RequestHandler):
 		new_boat = boat(name=boat_data['name'], type=boat_data['type'],
 						length=boat_data['length'], at_sea=True)
 		new_boat.put()
+		new_boat.id = str(new_boat.key.urlsafe())
+		new_boat.put()
+
 		boat_dict = new_boat.to_dict()
 		boat_dict['kind'] = new_boat.key.kind()
 		boat_dict['self'] = '/boats/' + new_boat.key.urlsafe()
@@ -91,9 +97,11 @@ class boatHandler(webapp2.RequestHandler):
 
 
 class slip(ndb.Model):
+	id = ndb.StringProperty()
 	number = ndb.IntegerProperty(required=True)
 	current_boat = ndb.StringProperty()
-	arrival_date = ndb.IntegerProperty()
+	arrival_date = ndb.StringProperty()
+
 
 
 class slipHandler(webapp2.RequestHandler):
@@ -102,6 +110,8 @@ class slipHandler(webapp2.RequestHandler):
 		slip_data = json.loads(self.request.body)
 		new_slip = slip(number=slip_data['number'])
 
+		new_slip.put()
+		new_slip.id = str(new_slip.key.urlsafe())
 		new_slip.put()
 
 		slip_dict = new_slip.to_dict()
@@ -126,34 +136,20 @@ class slipHandler(webapp2.RequestHandler):
 			modify_data = json.loads(self.request.body)
 			slip_entity = ndb.Key(urlsafe=id).get()
 
-			if slip_entity.current_boat is None:
-				if 'number' in modify_data:
-					slip_entity.number = modify_data['number']
+			if 'number' in modify_data:
+				slip_entity.number = modify_data['number']
 
-				if 'current_boat' in modify_data:
-					# check a boat into a slip
 
-					boat_entity = ndb.Key(urlsafe=modify_data['current_boat']).get()
-					boat_entity.at_sea = False
-					boat_entity.put()
+			if 'arrival_date' in modify_data:
+				slip_entity.arrival_date = modify_data['arrival_date']
 
-					slip_entity.current_boat = modify_data['current_boat']
+			slip_entity.put()
 
-				if 'arrival_date' in modify_data:
-					slip_entity.arrival_date = modify_data['arrival_date']
+			slip_dict = slip_entity.to_dict()
+			slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
+			slip_dict['self'] = "/slips/" + id
 
-				slip_entity.put()
-
-				slip_dict = slip_entity.to_dict()
-				slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
-				slip_dict['self'] = "/slips/" + id
-
-				self.response.write(json.dumps(slip_dict))
-
-			else:
-				self.response.write('Error 403 Forbidden')
-				self.response.set_status(403)
-
+			self.response.write(json.dumps(slip_dict))
 
 
 	def put(self, id=None):
@@ -179,6 +175,40 @@ class slipHandler(webapp2.RequestHandler):
 			ndb.Key(urlsafe=id).delete()
 
 
+
+class slipWithBoatHandler(webapp2.RequestHandler):
+
+	def put(self, id=None):
+		if id:
+
+			req_body = json.loads(self.request.body)
+			slip_entity = ndb.Key(urlsafe=id).get()
+
+			if slip_entity.current_boat is None and 'current_boat' in req_body and 'arrival_date' in req_body:
+
+				boat_entity = ndb.Key(urlsafe=req_body['current_boat']).get()
+				boat_entity.at_sea = False
+				boat_entity.put()
+
+				slip_entity.current_boat = req_body['current_boat']
+				slip_entity.arrival_date = req_body['arrival_date']
+
+				slip_entity.put()
+
+				slip_dict = slip_entity.to_dict()
+				slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
+				slip_dict['self'] = "/slips/" + id
+
+
+				self.response.write(json.dumps(slip_dict))
+
+			else:
+
+				self.response.write('Error 403 Forbidden')
+				self.response.set_status(403)
+
+
+
 class MainPage(webapp2.RequestHandler):
 
 	def get(self):
@@ -195,5 +225,6 @@ app = webapp2.WSGIApplication([
     ('/boats', boatHandler),
     ('/boats/(.*)', boatHandler),
 	('/slips', slipHandler),
+	('/slips/(.*)/boat', slipWithBoatHandler),
     ('/slips/(.*)', slipHandler),
 ], debug=True)
