@@ -12,8 +12,6 @@ class boat(ndb.Model):
 	at_sea = ndb.BooleanProperty()
 
 
-
-
 class boatHandler(webapp2.RequestHandler):
 
 	def post(self):
@@ -114,7 +112,7 @@ class boatHandler(webapp2.RequestHandler):
 				self.response.write(json.dumps(boat_dict))
 
 			else:
-				self.response.write('All parameters must be provided.')
+				self.response.write('All properties must be provided.')
 				self.abort(400)
 
 
@@ -132,15 +130,11 @@ class boatHandler(webapp2.RequestHandler):
 			self.response.set_status(204)
 
 
-
-
 class slip(ndb.Model):
 	id = ndb.StringProperty()
 	number = ndb.IntegerProperty(required=True)
 	current_boat = ndb.StringProperty()
 	arrival_date = ndb.StringProperty()
-
-
 
 
 class slipHandler(webapp2.RequestHandler):
@@ -256,8 +250,6 @@ class slipHandler(webapp2.RequestHandler):
 			self.response.set_status(204)
 
 
-
-
 class slipWithBoatHandler(webapp2.RequestHandler):
 
 	def put(self, id=None):
@@ -316,20 +308,14 @@ class slipWithBoatHandler(webapp2.RequestHandler):
 				self.response.write(json.dumps(slip_dict))
 
 
-
-
 class MainPage(webapp2.RequestHandler):
 
 	def get(self):
 		self.response.write("hello")
 
 
-
-
 def handle_400(request, response, exception):
 	response.set_status(400)
-
-
 
 
 allowed_methods = webapp2.WSGIApplication.allowed_methods
