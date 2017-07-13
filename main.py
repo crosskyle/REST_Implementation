@@ -54,6 +54,7 @@ class boatHandler(webapp2.RequestHandler):
 		else:
 			boat_list = boat.query().fetch()
 			res_list = []
+			res_obj = {}
 
 			for b in boat_list:
 				b_dict = b.to_dict()
@@ -61,7 +62,9 @@ class boatHandler(webapp2.RequestHandler):
 				b_dict['self'] = "/boats/" + b_dict['id']
 				res_list.append(b_dict)
 
-			self.response.write(json.dumps(res_list))
+			res_obj['kind'] = 'collection'
+			res_obj['contents'] = res_list
+			self.response.write(json.dumps(res_obj))
 
 
 	def patch(self, id=None):
@@ -178,6 +181,7 @@ class slipHandler(webapp2.RequestHandler):
 		else:
 			slip_list = slip.query().fetch()
 			res_list = []
+			res_obj = {}
 
 			for s in slip_list:
 				s_dict = s.to_dict()
@@ -185,7 +189,9 @@ class slipHandler(webapp2.RequestHandler):
 				s_dict['self'] = "/slips/" + s_dict['id']
 				res_list.append(s_dict)
 
-			self.response.write(json.dumps(res_list))
+			res_obj['kind'] = 'collection'
+			res_obj['contents'] = res_list
+			self.response.write(json.dumps(res_obj))
 
 
 	def patch(self, id=None):
