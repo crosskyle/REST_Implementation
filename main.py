@@ -49,8 +49,19 @@ class boatHandler(webapp2.RequestHandler):
 			boat_dict = boat_data.to_dict()
 			boat_dict['kind'] = ndb.Key(urlsafe=id).kind()
 			boat_dict['self'] = "/boats/" + id
-
 			self.response.write(json.dumps(boat_dict))
+
+		else:
+			boat_list = boat.query().fetch()
+			res_list = []
+
+			for b in boat_list:
+				b_dict = b.to_dict()
+				b_dict['kind'] = "boat"
+				b_dict['self'] = "/boats/" + b_dict['id']
+				res_list.append(b_dict)
+
+			self.response.write(json.dumps(res_list))
 
 
 	def patch(self, id=None):
@@ -70,21 +81,6 @@ class boatHandler(webapp2.RequestHandler):
 				boat_entity.length = req_body['length']
 			else:
 				boat_entity.length = None
-
-			if 'at_sea' in req_body:
-				if req_body['at_sea']:
-					#remove a boat from a slip
-					slip_with_boat_list = slip.query(slip.current_boat == id).fetch()
-					slip_with_boat = slip_with_boat_list[0]
-					slip_with_boat.current_boat = None
-					slip_with_boat.arrival_date = None
-					slip_with_boat.put()
-
-					boat_entity.at_sea = req_body['at_sea']
-				else:
-					self.response.write('A boat can only have the at_sea property set to false via'
-										' PUT slips/{slip_id}/boat')
-					self.abort(400)
 
 			boat_entity.put()
 
@@ -135,7 +131,6 @@ class boatHandler(webapp2.RequestHandler):
 
 
 
-
 class slip(ndb.Model):
 	id = ndb.StringProperty()
 	number = ndb.IntegerProperty(required=True)
@@ -161,7 +156,6 @@ class slipHandler(webapp2.RequestHandler):
 				slip_dict = new_slip.to_dict()
 				slip_dict['kind'] = new_slip.key.kind()
 				slip_dict['self'] = '/slips/' + new_slip.key.urlsafe()
-
 				self.response.write(json.dumps(slip_dict))
 
 			else:
@@ -179,8 +173,19 @@ class slipHandler(webapp2.RequestHandler):
 			slip_dict = slip_data.to_dict()
 			slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
 			slip_dict['self'] = "/slips/" + id
-
 			self.response.write(json.dumps(slip_dict))
+
+		else:
+			slip_list = slip.query().fetch()
+			res_list = []
+
+			for s in slip_list:
+				s_dict = s.to_dict()
+				s_dict['kind'] = "slip"
+				s_dict['self'] = "/slips/" + s_dict['id']
+				res_list.append(s_dict)
+
+			self.response.write(json.dumps(res_list))
 
 
 	def patch(self, id=None):
@@ -222,7 +227,6 @@ class slipHandler(webapp2.RequestHandler):
 					slip_dict = slip_entity.to_dict()
 					slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
 					slip_dict['self'] = "/slips/" + id
-
 					self.response.write(json.dumps(slip_dict))
 
 				else:
@@ -248,7 +252,6 @@ class slipHandler(webapp2.RequestHandler):
 
 
 
-
 class slipWithBoatHandler(webapp2.RequestHandler):
 
 	def put(self, id=None):
@@ -270,7 +273,7 @@ class slipWithBoatHandler(webapp2.RequestHandler):
 
 					slip_dict = slip_entity.to_dict()
 					slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
-					slip_dict['self'] = "/slips/" + id
+					slip_dict['self'] = "/slips/" + id + "/boat"
 
 
 					self.response.write(json.dumps(slip_dict))
@@ -282,6 +285,29 @@ class slipWithBoatHandler(webapp2.RequestHandler):
 			else:
 				self.response.write('current_boat and arrival_date must be in request body.')
 				self.abort(400)
+
+
+	def delete(self, id=None):
+		if id:
+			slip_entity = ndb.Key(urlsafe=id).get()
+
+			if slip_entity.current_boat is None:
+				self.response.write('This slip is already empty')
+				self.abort(400)
+
+			else:
+				boat_entity = ndb.Key(urlsafe=slip_entity.current_boat).get()
+				boat_entity.at_sea = True
+				boat_entity.put()
+
+				slip_entity.current_boat = None
+				slip_entity.arrival_date = None
+				slip_entity.put()
+
+				slip_dict = slip_entity.to_dict()
+				slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
+				slip_dict['self'] = "/slips/" + id + "/boat"
+				self.response.write(json.dumps(slip_dict))
 
 
 
