@@ -20,8 +20,14 @@ class boatHandler(webapp2.RequestHandler):
 		req_body = json.loads(self.request.body)
 
 		if 'name' in req_body:
-			new_boat = boat(name=req_body['name'], type=req_body['type'],
-							length=req_body['length'], at_sea=True)
+			new_boat = boat(name=req_body['name'], at_sea=True)
+
+			if 'type' in req_body:
+				new_boat.type = req_body['type']
+
+			if 'length' in req_body:
+				new_boat.type = req_body['length']
+
 			new_boat.put()
 			new_boat.id = str(new_boat.key.urlsafe())
 			new_boat.put()
@@ -115,7 +121,17 @@ class boatHandler(webapp2.RequestHandler):
 
 	def delete(self, id=None):
 		if id:
+			slip_with_boat_list = slip.query(slip.current_boat == id).fetch()
+
+			if len(slip_with_boat_list) > 0:
+				slip_with_boat = slip_with_boat_list[0]
+				slip_with_boat.current_boat = None
+				slip_with_boat.arrival_date = None
+				slip_with_boat.put()
+
 			ndb.Key(urlsafe=id).delete()
+			self.response.set_status(204)
+
 
 
 
@@ -219,7 +235,16 @@ class slipHandler(webapp2.RequestHandler):
 
 	def delete(self, id=None):
 		if id:
+			slip_entity = ndb.Key(urlsafe=id).get()
+
+			if not (slip_entity.current_boat is None):
+				boat_entity = ndb.Key(urlsafe=slip_entity.current_boat).get()
+				boat_entity.at_sea = True
+				boat_entity.put()
+
 			ndb.Key(urlsafe=id).delete()
+			self.response.set_status(204)
+
 
 
 
