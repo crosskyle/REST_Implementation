@@ -1,8 +1,12 @@
+# Author: Kyle Cross
+# Date: 7/13/17
+# Description: A REST API that stores boat and slip data in a Google Cloud datastore
 
 from google.appengine.ext import ndb
 import webapp2
-import json
 import time
+import json
+
 
 class boat(ndb.Model):
 	id = ndb.StringProperty()
@@ -71,26 +75,32 @@ class boatHandler(webapp2.RequestHandler):
 			req_body = json.loads(self.request.body)
 			boat_entity = ndb.Key(urlsafe=id).get()
 
-			if 'name' in req_body:
-				boat_entity.name = req_body['name']
+			if len(req_body) <= 3:
 
-			if 'type' in req_body:
-				boat_entity.type = req_body['type']
+				if 'name' in req_body:
+					boat_entity.name = req_body['name']
+
+				if 'type' in req_body:
+					boat_entity.type = req_body['type']
+				else:
+					boat_entity.type = None
+
+				if 'length' in req_body:
+					boat_entity.length = req_body['length']
+				else:
+					boat_entity.length = None
+
+				boat_entity.put()
+
+				boat_dict = boat_entity.to_dict()
+				boat_dict['kind'] = ndb.Key(urlsafe=id).kind()
+				boat_dict['self'] = "/boats/" + id
+
+				self.response.write(json.dumps(boat_dict))
+
 			else:
-				boat_entity.type = None
-
-			if 'length' in req_body:
-				boat_entity.length = req_body['length']
-			else:
-				boat_entity.length = None
-
-			boat_entity.put()
-
-			boat_dict = boat_entity.to_dict()
-			boat_dict['kind'] = ndb.Key(urlsafe=id).kind()
-			boat_dict['self'] = "/boats/" + id
-
-			self.response.write(json.dumps(boat_dict))
+				self.response.write('Too many fields given')
+				self.abort(400)
 
 
 	def put(self, id=None):
@@ -128,6 +138,7 @@ class boatHandler(webapp2.RequestHandler):
 				slip_with_boat.put()
 
 			ndb.Key(urlsafe=id).delete()
+			time.sleep(.2)
 			self.response.set_status(204)
 
 
@@ -194,23 +205,27 @@ class slipHandler(webapp2.RequestHandler):
 			req_body = json.loads(self.request.body)
 			slip_entity = ndb.Key(urlsafe=id).get()
 
-			if 'number' in req_body:
-				if slip.query(slip.number == req_body['number']).get() is None:
-					slip_entity.number = req_body['number']
+			if len(req_body) <= 1:
+				if 'number' in req_body:
+					if slip.query(slip.number == req_body['number']).get() is None:
+						slip_entity.number = req_body['number']
 
-					slip_entity.put()
+						slip_entity.put()
 
-					slip_dict = slip_entity.to_dict()
-					slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
-					slip_dict['self'] = "/slips/" + id
+						slip_dict = slip_entity.to_dict()
+						slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
+						slip_dict['self'] = "/slips/" + id
 
-					self.response.write(json.dumps(slip_dict))
+						self.response.write(json.dumps(slip_dict))
 
+					else:
+						self.response.write('A unique slip number must be provided.')
+						self.abort(400)
 				else:
-					self.response.write('A unique slip number must be provided.')
+					self.response.write('A slip number should be provided.')
 					self.abort(400)
 			else:
-				self.response.write('A slip number should be provided.')
+				self.response.write('Wrong parameters given.')
 				self.abort(400)
 
 
@@ -219,22 +234,26 @@ class slipHandler(webapp2.RequestHandler):
 			req_body = json.loads(self.request.body)
 			slip_entity = ndb.Key(urlsafe=id).get()
 
-			if 'number' in req_body:
-				if slip.query(slip.number == req_body['number']).get() is None:
-					slip_entity.number = req_body['number']
+			if len(req_body) < 1:
+				if 'number' in req_body:
+					if slip.query(slip.number == req_body['number']).get() is None:
+						slip_entity.number = req_body['number']
 
-					slip_entity.put()
+						slip_entity.put()
 
-					slip_dict = slip_entity.to_dict()
-					slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
-					slip_dict['self'] = "/slips/" + id
-					self.response.write(json.dumps(slip_dict))
+						slip_dict = slip_entity.to_dict()
+						slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
+						slip_dict['self'] = "/slips/" + id
+						self.response.write(json.dumps(slip_dict))
 
+					else:
+						self.response.write('A unique slip number must be provided.')
+						self.abort(400)
 				else:
-					self.response.write('A unique slip number must be provided.')
+					self.response.write('A slip number should be provided.')
 					self.abort(400)
 			else:
-				self.response.write('A slip number should be provided.')
+				self.response.write('An input field must be provided')
 				self.abort(400)
 
 
@@ -248,7 +267,6 @@ class slipHandler(webapp2.RequestHandler):
 				boat_entity.put()
 
 			ndb.Key(urlsafe=id).delete()
-
 			time.sleep(.2)
 			self.response.set_status(204)
 
@@ -264,21 +282,27 @@ class slipWithBoatHandler(webapp2.RequestHandler):
 
 				if slip_entity.current_boat is None:
 					boat_entity = ndb.Key(urlsafe=req_body['current_boat']).get()
-					boat_entity.at_sea = False
-					boat_entity.put()
 
-					slip_entity.current_boat = req_body['current_boat']
-					slip_entity.arrival_date = req_body['arrival_date']
+					if boat_entity.at_sea is True:
+						boat_entity.at_sea = False
+						boat_entity.put()
 
-					slip_entity.put()
-					time.sleep(.2)
+						slip_entity.current_boat = req_body['current_boat']
+						slip_entity.arrival_date = req_body['arrival_date']
 
-					slip_dict = slip_entity.to_dict()
-					slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
-					slip_dict['self'] = "/slips/" + id + "/boat"
+						slip_entity.put()
+						time.sleep(.2)
+
+						slip_dict = slip_entity.to_dict()
+						slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
+						slip_dict['self'] = "/slips/" + id + "/boat"
 
 
-					self.response.write(json.dumps(slip_dict))
+						self.response.write(json.dumps(slip_dict))
+
+					else:
+						self.response.write('Error 403 Forbidden')
+						self.response.set_status(403)
 
 				else:
 					self.response.write('Error 403 Forbidden')
