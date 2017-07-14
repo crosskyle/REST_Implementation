@@ -2,7 +2,7 @@
 from google.appengine.ext import ndb
 import webapp2
 import json
-
+import time
 
 class boat(ndb.Model):
 	id = ndb.StringProperty()
@@ -24,7 +24,7 @@ class boatHandler(webapp2.RequestHandler):
 				new_boat.type = req_body['type']
 
 			if 'length' in req_body:
-				new_boat.type = req_body['length']
+				new_boat.length = req_body['length']
 
 			new_boat.put()
 			new_boat.id = str(new_boat.key.urlsafe())
@@ -51,13 +51,14 @@ class boatHandler(webapp2.RequestHandler):
 
 		else:
 			boat_list = boat.query().fetch()
+
 			res_list = []
 			res_obj = {}
 
 			for b in boat_list:
 				b_dict = b.to_dict()
 				b_dict['kind'] = "boat"
-				b_dict['self'] = "/boats/" + b_dict['id']
+				b_dict['self'] = "/boats/" + str(b_dict['id'])
 				res_list.append(b_dict)
 
 			res_obj['kind'] = 'collection'
@@ -180,7 +181,7 @@ class slipHandler(webapp2.RequestHandler):
 			for s in slip_list:
 				s_dict = s.to_dict()
 				s_dict['kind'] = "slip"
-				s_dict['self'] = "/slips/" + s_dict['id']
+				s_dict['self'] = "/slips/" + str(s_dict['id'])
 				res_list.append(s_dict)
 
 			res_obj['kind'] = 'collection'
@@ -247,6 +248,8 @@ class slipHandler(webapp2.RequestHandler):
 				boat_entity.put()
 
 			ndb.Key(urlsafe=id).delete()
+
+			time.sleep(.2)
 			self.response.set_status(204)
 
 
@@ -268,6 +271,7 @@ class slipWithBoatHandler(webapp2.RequestHandler):
 					slip_entity.arrival_date = req_body['arrival_date']
 
 					slip_entity.put()
+					time.sleep(.2)
 
 					slip_dict = slip_entity.to_dict()
 					slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
