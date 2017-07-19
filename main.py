@@ -291,7 +291,7 @@ class slipWithBoatHandler(webapp2.RequestHandler):
 						slip_entity.arrival_date = req_body['arrival_date']
 
 						slip_entity.put()
-						time.sleep(.2)
+						time.sleep(.7)
 
 						slip_dict = slip_entity.to_dict()
 						slip_dict['kind'] = ndb.Key(urlsafe=id).kind()
@@ -339,7 +339,7 @@ class slipWithBoatHandler(webapp2.RequestHandler):
 class MainPage(webapp2.RequestHandler):
 
 	def get(self):
-		self.response.write("hello")
+		self.response.write("A REST API for storing boat and slip data.")
 
 
 def handle_400(request, response, exception):
